@@ -1,1 +1,30 @@
+#include <iostream>
+#include <random>
 
+int change_pos(int k, int holes[2 * k]) {
+    
+}
+
+int main() {
+    int m, n, k;
+    std::cout << "Enter size:" << std::endl;
+    std::cout << "m: ";
+    std::cin >> m;
+    std::cout << "n: ";
+    std::cin >> n;
+    std::cout << "Amount of holes: ";
+    std::cin >> k;
+    int space[m * n], holes[2 * k], i = 0;
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<int> dist1(1, m), dist2(1, n);
+    for (; i < k; i++) {
+        holes[i] = dist1(rng);
+        holes[k + i] = dist2(rng);
+    }
+    while (true) {
+        holes = change_pos(k, holes);
+        return 0;
+    }
+    return 0;
+}
