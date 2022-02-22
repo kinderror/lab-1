@@ -1,12 +1,69 @@
 #include <iostream>
 #include <random>
+#include <math.h>
 
-int change_pos(int k, int holes[2 * k]) {
-    
+void make_holes(int m, int n, int k, int *holes, int *stopped_holes){
+    int i;
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<int> dist1(1, m), dist2(1, n);
+    for (; i < k; i++) {
+        holes[i] = dist2(rng);
+        holes[k + i] = dist1(rng);
+        stopped_holes[i] = 0;
+    }
+    stopped_holes[k] = 0;
+}
+void change_pos(int k, int *holes, int *stopped_holes) {
+    int rnd, i = 0;
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<int> dist(1, 4);
+    for (; i < k; i++) {
+        if (stopped_holes[i] == 0) {
+            rnd = dist(rng);
+            if (rnd == 1) holes[i]++;
+            if (rnd == 2) holes[i]--;
+            if (rnd == 3) holes[i + k]++;
+            if (rnd == 4) holes[i + k]--;
+        }
+    }
+    i = 0;
+}
+
+void stop_holes(int m, int n, int k, int *holes, int *stopped_holes) {
+    int i = 0, j = 0, N = 0;
+    for (; i < k; i++) {
+        if (stopped_holes[i] == 1) N++;
+        if (holes[i] == 1 or holes[i] == n or holes[i + k] == 1 or holes[i + k] == m) stopped_holes[i] = 1;
+        if (stopped_holes[i] == 0) {
+            for (; j < k; j++) {
+                if (fabs(holes[j] - holes[i]) + fabs(holes[j + k] - holes[i + k]) == 1) {
+                    stopped_holes[i] = 1;
+                    stopped_holes[j] = 1;
+                }
+            }
+        }
+    }
+    if (N == k) stopped_holes[k] = 1;
+}
+
+double calculate_error(int *time, int N) {
+    double t_0, D = 0;
+    int i = 0;
+    for (; i < N; i++) {
+        t_0 += time[i];
+    }
+    t_0 = t_0 / N;
+    i = 0;
+    for (; i < N; i++) {
+        D += (time[i] - t_0)*(time[i] - t_0);
+    }
+    return pow(D / (N * N) , 0.5) / t_0;
 }
 
 int main() {
-    int m, n, k;
+    int m, n, k, t = 0;
     std::cout << "Enter size:" << std::endl;
     std::cout << "m: ";
     std::cin >> m;
@@ -14,17 +71,27 @@ int main() {
     std::cin >> n;
     std::cout << "Amount of holes: ";
     std::cin >> k;
-    int space[m * n], holes[2 * k], i = 0;
-    std::random_device dev;
-    std::mt19937 rng(dev());
-    std::uniform_int_distribution<int> dist1(1, m), dist2(1, n);
-    for (; i < k; i++) {
-        holes[i] = dist1(rng);
-        holes[k + i] = dist2(rng);
+    int holes[2 * k], stopped_holes[k + 1], time[10000], N = 0;
+    double e = 1, t_0 = 0; //error
+    while ((e > 0.01 or N < 10) and N != 10000) {
+        t = 0;
+        make_holes(m, n, k, holes, stopped_holes);
+        while (stopped_holes[k] == 0) {
+            change_pos(k, holes, stopped_holes);
+            stop_holes(m, n, k, holes, stopped_holes);
+            t++;
+        }
+        time[N] = t;
+        N++;
+        e = calculate_error(time, N);
     }
-    while (true) {
-        holes = change_pos(k, holes);
-        return 0;
+    int i = 0;
+    for (; i < N; i++) {
+        t_0 += time[i];
     }
+    t_0 = t_0 / N;
+    std::cout << t_0 << std::endl;
+    std::cout << N << std::endl;
+    std::cout << e << std::endl;
     return 0;
 }
