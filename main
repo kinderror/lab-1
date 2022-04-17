@@ -2,18 +2,34 @@
 #include <random>
 #include <math.h>
 
-void make_holes(int m, int n, int k, int *holes, int *stopped_holes){
-    int i;
+// функция создает k дислокаций и помещает их в случайные точки пространства
+void make_holes(int n, int k, int *holes, int *stopped_holes){
+    int space[2 * n * n], i = 0, j = 0;
     std::random_device dev;
     std::mt19937 rng(dev());
-    std::uniform_int_distribution<int> dist1(1, m), dist2(1, n);
+    for (; i < n; i++) {
+        for (; j < n; j++) {
+            space[i + j * n] = i + 1;
+            space[i + j * n + n * n] = i + 1;
+        }
+    }
+    i = 0;
     for (; i < k; i++) {
-        holes[i] = dist2(rng);
-        holes[k + i] = dist1(rng);
+        std::uniform_int_distribution<int> dist(0, n * n - i - 1);
+        int rnd = dist(rng);
+        holes[i] = space[rnd];
+        holes[k + i] = space[rnd + n * n];
         stopped_holes[i] = 0;
+        j = rnd;
+        for (; j < n * n - i - 1; j++) {
+            space[j] = space[j + 1];
+            space[j + n * n] = space[j + n * n + 1];
+        }
     }
     stopped_holes[k] = 0;
 }
+
+// функция меняет позицию каждой дислокации на 1 пункт
 void change_pos(int k, int *holes, int *stopped_holes) {
     int rnd, i = 0;
     std::random_device dev;
@@ -28,26 +44,28 @@ void change_pos(int k, int *holes, int *stopped_holes) {
             if (rnd == 4) holes[i + k]--;
         }
     }
-    i = 0;
 }
 
-void stop_holes(int m, int n, int k, int *holes, int *stopped_holes) {
-    int i = 0, j = 0, N = 0;
+// функция проверяет, какие дислокации слиплись, и дает им статус остановившихся
+void stop_holes(int n, int k, int *holes, int *stopped_holes) {
+    int i = 0, j = 0, N = 0; // N - счетчик остановленных дислокаций
     for (; i < k; i++) {
         if (stopped_holes[i] == 1) N++;
-        if (holes[i] == 1 or holes[i] == n or holes[i + k] == 1 or holes[i + k] == m) stopped_holes[i] = 1;
+        if (holes[i] == 1 or holes[i] == n or holes[i + k] == 1 or holes[i + k] == n) stopped_holes[i] = 1;
         if (stopped_holes[i] == 0) {
-            for (; j < k; j++) {
-                if (fabs(holes[j] - holes[i]) + fabs(holes[j + k] - holes[i + k]) == 1) {
+            j = 0;
+            for (; j < i; j++) {
+                if (fabs(holes[j] - holes[i]) + fabs(holes[j + k] - holes[i + k]) <= 1) {
                     stopped_holes[i] = 1;
                     stopped_holes[j] = 1;
                 }
             }
         }
     }
-    if (N == k) stopped_holes[k] = 1;
+    if (N == k) stopped_holes[k] = 1; // проверяет, все ли дислокации остановились
 }
 
+// функция считает дисперсию времен и возвращает относительную погрешность среднего значения
 double calculate_error(int *time, int N) {
     double t_0, D = 0;
     int i = 0;
@@ -63,22 +81,19 @@ double calculate_error(int *time, int N) {
 }
 
 int main() {
-    int m, n, k, t = 0;
+    int n, k, t = 0; // размер кристалла n и количество дислокаций k
     std::cout << "Enter size:" << std::endl;
-    std::cout << "m: ";
-    std::cin >> m;
-    std::cout << "n: ";
     std::cin >> n;
-    std::cout << "Amount of holes: ";
+    std::cout << "Amount of dislocations: " << std::endl;
     std::cin >> k;
-    int holes[2 * k], stopped_holes[k + 1], time[10000], N = 0;
-    double e = 1, t_0 = 0; //error
-    while ((e > 0.01 or N < 10) and N != 10000) {
+    int holes[2 * k], stopped_holes[k + 1], time[10000], N = 0; // поле кристалла и остановленные дислокации
+    double e = 1, t_0 = 0; // относительная погрешность e
+    while ((e > 0.01 or N < 10) and N != 1000) {
         t = 0;
-        make_holes(m, n, k, holes, stopped_holes);
+        make_holes(n, k, holes, stopped_holes);
         while (stopped_holes[k] == 0) {
+            stop_holes(n, k, holes, stopped_holes);
             change_pos(k, holes, stopped_holes);
-            stop_holes(m, n, k, holes, stopped_holes);
             t++;
         }
         time[N] = t;
@@ -90,8 +105,8 @@ int main() {
         t_0 += time[i];
     }
     t_0 = t_0 / N;
-    std::cout << t_0 << std::endl;
-    std::cout << N << std::endl;
-    std::cout << e << std::endl;
+    std::cout << "Mean time: " << t_0 << std::endl;
+    std::cout << "Error: " << 100 * e << "%" << std::endl;
+    std::cout << "Dislocations / All: " << 100 * (k / (n * n)) << "%";
     return 0;
 }
